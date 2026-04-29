@@ -1,4 +1,5 @@
 // Prisma schema for 天策三角洲社区
+// 兼容 Prisma 5.x / 6.x / 7.x
 
 datasource db {
   provider = "mysql"
@@ -23,7 +24,6 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // 关系
   posts         Post[]
   comments      Comment[]
   postLikes     PostLike[]
@@ -36,7 +36,6 @@ model User {
 
   @@index([email])
   @@index([createdAt])
-  @@index([rank])
   @@map("users")
 }
 
@@ -48,29 +47,26 @@ enum Role {
 
 // 帖子表
 model Post {
-  id            Int      @id @default(autoincrement())
-  userId        Int      @map("user_id")
-  title         String   @db.VarChar(200)
-  content       String   @db.Text
+  id            Int        @id @default(autoincrement())
+  userId        Int        @map("user_id")
+  title         String     @db.VarChar(200)
+  content       String     @db.Text
   images        Json?
-  tags          String?  @db.VarChar(255)
-  views         Int      @default(0)
-  likes         Int      @default(0)
-  commentsCount Int      @default(0) @map("comments_count")
+  tags          String?    @db.VarChar(255)
+  views         Int        @default(0)
+  likes         Int        @default(0)
+  commentsCount Int        @default(0) @map("comments_count")
   status        PostStatus @default(PUBLISHED)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  // 关系
-  author   User       @relation(fields: [userId], references: [id])
-  comments Comment[]
+  author    User       @relation(fields: [userId], references: [id])
+  comments  Comment[]
   postLikes PostLike[]
 
   @@index([userId])
   @@index([createdAt])
-  @@index([likes])
   @@index([status])
-  @@fulltext([title, content])
   @@map("posts")
 }
 
@@ -88,13 +84,11 @@ model Comment {
   parentId  Int?     @map("parent_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  // 关系
   post   Post @relation(fields: [postId], references: [id])
   author User @relation(fields: [userId], references: [id])
 
   @@index([postId])
   @@index([userId])
-  @@index([createdAt])
   @@map("comments")
 }
 
@@ -105,12 +99,10 @@ model PostLike {
   userId    Int      @map("user_id")
   createdAt DateTime @default(now()) @map("created_at")
 
-  // 关系
   post Post @relation(fields: [postId], references: [id])
   user User @relation(fields: [userId], references: [id])
 
   @@unique([postId, userId])
-  @@index([userId])
   @@map("post_likes")
 }
 
@@ -127,13 +119,11 @@ model Team {
   status          TeamStatus @default(OPEN)
   createdAt       DateTime   @default(now()) @map("created_at")
 
-  // 关系
   creator User         @relation("TeamCreator", fields: [creatorId], references: [id])
   members TeamMember[]
 
   @@index([creatorId])
   @@index([status])
-  @@index([createdAt])
   @@map("teams")
 }
 
@@ -150,12 +140,10 @@ model TeamMember {
   userId   Int      @map("user_id")
   joinedAt DateTime @default(now()) @map("joined_at")
 
-  // 关系
   team Team @relation(fields: [teamId], references: [id])
   user User @relation(fields: [userId], references: [id])
 
   @@unique([teamId, userId])
-  @@index([userId])
   @@map("team_members")
 }
 
@@ -168,18 +156,15 @@ model Message {
   isRead     Boolean  @default(false) @map("is_read")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  // 关系
   sender   User @relation("MessageSender", fields: [senderId], references: [id])
   receiver User @relation("MessageReceiver", fields: [receiverId], references: [id])
 
   @@index([senderId])
   @@index([receiverId])
-  @@index([isRead])
-  @@index([createdAt])
   @@map("messages")
 }
 
-// 订单表（第二期）
+// 订单表
 model Order {
   id          Int         @id @default(autoincrement())
   userId      Int         @map("user_id")
@@ -190,14 +175,12 @@ model Order {
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
 
-  // 关系
   user    User @relation("OrderUser", fields: [userId], references: [id])
   booster User @relation("OrderBooster", fields: [boosterId], references: [id])
 
   @@index([userId])
   @@index([boosterId])
   @@index([status])
-  @@index([createdAt])
   @@map("orders")
 }
 
