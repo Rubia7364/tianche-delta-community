@@ -1,0 +1,209 @@
+// Prisma schema for 天策三角洲社区
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 用户表
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  nickname  String
+  avatar    String?
+  gameId    String?  @map("game_id")
+  rank      String?
+  role      Role     @default(USER)
+  bio       String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 关系
+  posts         Post[]
+  comments      Comment[]
+  postLikes     PostLike[]
+  createdTeams  Team[]         @relation("TeamCreator")
+  teamMembers   TeamMember[]
+  sentMessages  Message[]      @relation("MessageSender")
+  receivedMessages Message[]   @relation("MessageReceiver")
+  orders        Order[]        @relation("OrderUser")
+  boostedOrders Order[]        @relation("OrderBooster")
+
+  @@index([email])
+  @@index([createdAt])
+  @@index([rank])
+  @@map("users")
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+// 帖子表
+model Post {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  title         String   @db.VarChar(200)
+  content       String   @db.Text
+  images        Json?
+  tags          String?  @db.VarChar(255)
+  views         Int      @default(0)
+  likes         Int      @default(0)
+  commentsCount Int      @default(0) @map("comments_count")
+  status        PostStatus @default(PUBLISHED)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // 关系
+  author   User       @relation(fields: [userId], references: [id])
+  comments Comment[]
+  postLikes PostLike[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([likes])
+  @@index([status])
+  @@fulltext([title, content])
+  @@map("posts")
+}
+
+enum PostStatus {
+  PUBLISHED
+  DELETED
+}
+
+// 评论表
+model Comment {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  content   String   @db.Text
+  parentId  Int?     @map("parent_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // 关系
+  post   Post @relation(fields: [postId], references: [id])
+  author User @relation(fields: [userId], references: [id])
+
+  @@index([postId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+// 帖子点赞表
+model PostLike {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  userId    Int      @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // 关系
+  post Post @relation(fields: [postId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("post_likes")
+}
+
+// 组队表
+model Team {
+  id              Int        @id @default(autoincrement())
+  creatorId       Int        @map("creator_id")
+  title           String     @db.VarChar(200)
+  mode            String     @db.VarChar(50)
+  map             String?    @db.VarChar(50)
+  rankRequirement String?    @map("rank_requirement") @db.VarChar(50)
+  maxMembers      Int        @default(5) @map("max_members")
+  currentMembers  Int        @default(1) @map("current_members")
+  status          TeamStatus @default(OPEN)
+  createdAt       DateTime   @default(now()) @map("created_at")
+
+  // 关系
+  creator User         @relation("TeamCreator", fields: [creatorId], references: [id])
+  members TeamMember[]
+
+  @@index([creatorId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("teams")
+}
+
+enum TeamStatus {
+  OPEN
+  FULL
+  CLOSED
+}
+
+// 队伍成员表
+model TeamMember {
+  id       Int      @id @default(autoincrement())
+  teamId   Int      @map("team_id")
+  userId   Int      @map("user_id")
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  // 关系
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+// 私信表
+model Message {
+  id         Int      @id @default(autoincrement())
+  senderId   Int      @map("sender_id")
+  receiverId Int      @map("receiver_id")
+  content    String   @db.Text
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // 关系
+  sender   User @relation("MessageSender", fields: [senderId], references: [id])
+  receiver User @relation("MessageReceiver", fields: [receiverId], references: [id])
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+// 订单表（第二期）
+model Order {
+  id          Int         @id @default(autoincrement())
+  userId      Int         @map("user_id")
+  boosterId   Int         @map("booster_id")
+  serviceType String      @map("service_type") @db.VarChar(50)
+  price       Decimal     @db.Decimal(10, 2)
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  // 关系
+  user    User @relation("OrderUser", fields: [userId], references: [id])
+  booster User @relation("OrderBooster", fields: [boosterId], references: [id])
+
+  @@index([userId])
+  @@index([boosterId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  COMPLETED
+  CANCELLED
+}
